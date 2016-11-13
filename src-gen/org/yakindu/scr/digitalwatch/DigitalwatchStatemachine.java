@@ -103,22 +103,23 @@ public class DigitalwatchStatemachine implements IDigitalwatchStatemachine {
 	private boolean initialized = false;
 	
 	public enum State {
-		main_region_digitalwatch,
 		main_region_displayStates,
 		main_region_displayStates_IndigLo_LightOff,
 		main_region_displayStates_IndigLo_LightActive,
 		main_region_displayStates_IndigLo_LightDelay,
-		main_region_displayStates_TimeDisplay_TimerDisplayed,
+		main_region_displayStates_MainDisplay_TimeDisplayed,
+		main_region_displayStates_MainDisplay_ChronoDisplayed,
+		main_region_displayStates_TimerUpdater_TimeUpdate,
 		$NullState$
 	};
 	
-	private final State[] stateVector = new State[2];
+	private final State[] stateVector = new State[3];
 	
 	private int nextStateIndex;
 	
 	private ITimer timer;
 	
-	private final boolean[] timeEvents = new boolean[2];
+	private final boolean[] timeEvents = new boolean[3];
 	public DigitalwatchStatemachine() {
 		sCIButtons = new SCIButtonsImpl();
 		sCIDisplay = new SCIDisplayImpl();
@@ -130,7 +131,7 @@ public class DigitalwatchStatemachine implements IDigitalwatchStatemachine {
 		if (timer == null) {
 			throw new IllegalStateException("timer not set.");
 		}
-		for (int i = 0; i < 2; i++) {
+		for (int i = 0; i < 3; i++) {
 			stateVector[i] = State.$NullState$;
 		}
 		clearEvents();
@@ -156,7 +157,7 @@ public class DigitalwatchStatemachine implements IDigitalwatchStatemachine {
 	 * @see IStatemachine#isActive()
 	 */
 	public boolean isActive() {
-		return stateVector[0] != State.$NullState$||stateVector[1] != State.$NullState$;
+		return stateVector[0] != State.$NullState$||stateVector[1] != State.$NullState$||stateVector[2] != State.$NullState$;
 	}
 	
 	/** 
@@ -190,19 +191,21 @@ public class DigitalwatchStatemachine implements IDigitalwatchStatemachine {
 	public boolean isStateActive(State state) {
 	
 		switch (state) {
-		case main_region_digitalwatch:
-			return stateVector[0] == State.main_region_digitalwatch;
 		case main_region_displayStates:
 			return stateVector[0].ordinal() >= State.
-					main_region_displayStates.ordinal()&& stateVector[0].ordinal() <= State.main_region_displayStates_TimeDisplay_TimerDisplayed.ordinal();
+					main_region_displayStates.ordinal()&& stateVector[0].ordinal() <= State.main_region_displayStates_TimerUpdater_TimeUpdate.ordinal();
 		case main_region_displayStates_IndigLo_LightOff:
 			return stateVector[0] == State.main_region_displayStates_IndigLo_LightOff;
 		case main_region_displayStates_IndigLo_LightActive:
 			return stateVector[0] == State.main_region_displayStates_IndigLo_LightActive;
 		case main_region_displayStates_IndigLo_LightDelay:
 			return stateVector[0] == State.main_region_displayStates_IndigLo_LightDelay;
-		case main_region_displayStates_TimeDisplay_TimerDisplayed:
-			return stateVector[1] == State.main_region_displayStates_TimeDisplay_TimerDisplayed;
+		case main_region_displayStates_MainDisplay_TimeDisplayed:
+			return stateVector[1] == State.main_region_displayStates_MainDisplay_TimeDisplayed;
+		case main_region_displayStates_MainDisplay_ChronoDisplayed:
+			return stateVector[1] == State.main_region_displayStates_MainDisplay_ChronoDisplayed;
+		case main_region_displayStates_TimerUpdater_TimeUpdate:
+			return stateVector[2] == State.main_region_displayStates_TimerUpdater_TimeUpdate;
 		default:
 			return false;
 		}
@@ -244,10 +247,6 @@ public class DigitalwatchStatemachine implements IDigitalwatchStatemachine {
 		return sCILogicUnit;
 	}
 	
-	private boolean check_main_region_digitalwatch_tr0_tr0() {
-		return true;
-	}
-	
 	private boolean check_main_region_displayStates_IndigLo_LightOff_tr0_tr0() {
 		return sCIButtons.topRightPressed;
 	}
@@ -264,13 +263,20 @@ public class DigitalwatchStatemachine implements IDigitalwatchStatemachine {
 		return sCIButtons.topRightPressed;
 	}
 	
-	private boolean check_main_region_displayStates_TimeDisplay_TimerDisplayed_tr0_tr0() {
+	private boolean check_main_region_displayStates_MainDisplay_TimeDisplayed_tr0_tr0() {
 		return timeEvents[1];
 	}
 	
-	private void effect_main_region_digitalwatch_tr0() {
-		exitSequence_main_region_digitalwatch();
-		enterSequence_main_region_displayStates_default();
+	private boolean check_main_region_displayStates_MainDisplay_TimeDisplayed_tr1_tr1() {
+		return sCIButtons.topLeftPressed;
+	}
+	
+	private boolean check_main_region_displayStates_MainDisplay_ChronoDisplayed_tr0_tr0() {
+		return sCIButtons.topLeftPressed;
+	}
+	
+	private boolean check_main_region_displayStates_TimerUpdater_TimeUpdate_tr0_tr0() {
+		return timeEvents[2];
 	}
 	
 	private void effect_main_region_displayStates_IndigLo_LightOff_tr0() {
@@ -293,11 +299,28 @@ public class DigitalwatchStatemachine implements IDigitalwatchStatemachine {
 		enterSequence_main_region_displayStates_IndigLo_LightActive_default();
 	}
 	
-	private void effect_main_region_displayStates_TimeDisplay_TimerDisplayed_tr0() {
-		exitSequence_main_region_displayStates_TimeDisplay_TimerDisplayed();
+	private void effect_main_region_displayStates_MainDisplay_TimeDisplayed_tr0() {
+		exitSequence_main_region_displayStates_MainDisplay_TimeDisplayed();
+		enterSequence_main_region_displayStates_MainDisplay_TimeDisplayed_default();
+	}
+	
+	private void effect_main_region_displayStates_MainDisplay_TimeDisplayed_tr1() {
+		exitSequence_main_region_displayStates_MainDisplay_TimeDisplayed();
+		sCIDisplay.operationCallback.refreshChronoDisplay();
+		
+		enterSequence_main_region_displayStates_MainDisplay_ChronoDisplayed_default();
+	}
+	
+	private void effect_main_region_displayStates_MainDisplay_ChronoDisplayed_tr0() {
+		exitSequence_main_region_displayStates_MainDisplay_ChronoDisplayed();
+		enterSequence_main_region_displayStates_MainDisplay_TimeDisplayed_default();
+	}
+	
+	private void effect_main_region_displayStates_TimerUpdater_TimeUpdate_tr0() {
+		exitSequence_main_region_displayStates_TimerUpdater_TimeUpdate();
 		sCILogicUnit.operationCallback.increaseTimeByOne();
 		
-		enterSequence_main_region_displayStates_TimeDisplay_TimerDisplayed_default();
+		enterSequence_main_region_displayStates_TimerUpdater_TimeUpdate_default();
 	}
 	
 	/* Entry action for state 'LightOff'. */
@@ -315,8 +338,8 @@ public class DigitalwatchStatemachine implements IDigitalwatchStatemachine {
 		timer.setTimer(this, 0, 2*1000, false);
 	}
 	
-	/* Entry action for state 'TimerDisplayed'. */
-	private void entryAction_main_region_displayStates_TimeDisplay_TimerDisplayed() {
+	/* Entry action for state 'TimeDisplayed'. */
+	private void entryAction_main_region_displayStates_MainDisplay_TimeDisplayed() {
 		timer.setTimer(this, 1, 1*1000, false);
 		
 		sCIDisplay.operationCallback.refreshTimeDisplay();
@@ -324,26 +347,31 @@ public class DigitalwatchStatemachine implements IDigitalwatchStatemachine {
 		sCIDisplay.operationCallback.refreshDateDisplay();
 	}
 	
+	/* Entry action for state 'TimeUpdate'. */
+	private void entryAction_main_region_displayStates_TimerUpdater_TimeUpdate() {
+		timer.setTimer(this, 2, 1*1000, false);
+	}
+	
 	/* Exit action for state 'LightDelay'. */
 	private void exitAction_main_region_displayStates_IndigLo_LightDelay() {
 		timer.unsetTimer(this, 0);
 	}
 	
-	/* Exit action for state 'TimerDisplayed'. */
-	private void exitAction_main_region_displayStates_TimeDisplay_TimerDisplayed() {
+	/* Exit action for state 'TimeDisplayed'. */
+	private void exitAction_main_region_displayStates_MainDisplay_TimeDisplayed() {
 		timer.unsetTimer(this, 1);
 	}
 	
-	/* 'default' enter sequence for state digitalwatch */
-	private void enterSequence_main_region_digitalwatch_default() {
-		nextStateIndex = 0;
-		stateVector[0] = State.main_region_digitalwatch;
+	/* Exit action for state 'TimeUpdate'. */
+	private void exitAction_main_region_displayStates_TimerUpdater_TimeUpdate() {
+		timer.unsetTimer(this, 2);
 	}
 	
 	/* 'default' enter sequence for state displayStates */
 	private void enterSequence_main_region_displayStates_default() {
 		enterSequence_main_region_displayStates_IndigLo_default();
-		enterSequence_main_region_displayStates_TimeDisplay_default();
+		enterSequence_main_region_displayStates_MainDisplay_default();
+		enterSequence_main_region_displayStates_TimerUpdater_default();
 	}
 	
 	/* 'default' enter sequence for state LightOff */
@@ -367,11 +395,24 @@ public class DigitalwatchStatemachine implements IDigitalwatchStatemachine {
 		stateVector[0] = State.main_region_displayStates_IndigLo_LightDelay;
 	}
 	
-	/* 'default' enter sequence for state TimerDisplayed */
-	private void enterSequence_main_region_displayStates_TimeDisplay_TimerDisplayed_default() {
-		entryAction_main_region_displayStates_TimeDisplay_TimerDisplayed();
+	/* 'default' enter sequence for state TimeDisplayed */
+	private void enterSequence_main_region_displayStates_MainDisplay_TimeDisplayed_default() {
+		entryAction_main_region_displayStates_MainDisplay_TimeDisplayed();
 		nextStateIndex = 1;
-		stateVector[1] = State.main_region_displayStates_TimeDisplay_TimerDisplayed;
+		stateVector[1] = State.main_region_displayStates_MainDisplay_TimeDisplayed;
+	}
+	
+	/* 'default' enter sequence for state ChronoDisplayed */
+	private void enterSequence_main_region_displayStates_MainDisplay_ChronoDisplayed_default() {
+		nextStateIndex = 1;
+		stateVector[1] = State.main_region_displayStates_MainDisplay_ChronoDisplayed;
+	}
+	
+	/* 'default' enter sequence for state TimeUpdate */
+	private void enterSequence_main_region_displayStates_TimerUpdater_TimeUpdate_default() {
+		entryAction_main_region_displayStates_TimerUpdater_TimeUpdate();
+		nextStateIndex = 2;
+		stateVector[2] = State.main_region_displayStates_TimerUpdater_TimeUpdate;
 	}
 	
 	/* 'default' enter sequence for region main region */
@@ -384,15 +425,14 @@ public class DigitalwatchStatemachine implements IDigitalwatchStatemachine {
 		react_main_region_displayStates_IndigLo__entry_Default();
 	}
 	
-	/* 'default' enter sequence for region TimeDisplay */
-	private void enterSequence_main_region_displayStates_TimeDisplay_default() {
-		react_main_region_displayStates_TimeDisplay__entry_Default();
+	/* 'default' enter sequence for region MainDisplay */
+	private void enterSequence_main_region_displayStates_MainDisplay_default() {
+		react_main_region_displayStates_MainDisplay__entry_Default();
 	}
 	
-	/* Default exit sequence for state digitalwatch */
-	private void exitSequence_main_region_digitalwatch() {
-		nextStateIndex = 0;
-		stateVector[0] = State.$NullState$;
+	/* 'default' enter sequence for region TimerUpdater */
+	private void enterSequence_main_region_displayStates_TimerUpdater_default() {
+		react_main_region_displayStates_TimerUpdater__entry_Default();
 	}
 	
 	/* Default exit sequence for state LightOff */
@@ -415,20 +455,31 @@ public class DigitalwatchStatemachine implements IDigitalwatchStatemachine {
 		exitAction_main_region_displayStates_IndigLo_LightDelay();
 	}
 	
-	/* Default exit sequence for state TimerDisplayed */
-	private void exitSequence_main_region_displayStates_TimeDisplay_TimerDisplayed() {
+	/* Default exit sequence for state TimeDisplayed */
+	private void exitSequence_main_region_displayStates_MainDisplay_TimeDisplayed() {
 		nextStateIndex = 1;
 		stateVector[1] = State.$NullState$;
 		
-		exitAction_main_region_displayStates_TimeDisplay_TimerDisplayed();
+		exitAction_main_region_displayStates_MainDisplay_TimeDisplayed();
+	}
+	
+	/* Default exit sequence for state ChronoDisplayed */
+	private void exitSequence_main_region_displayStates_MainDisplay_ChronoDisplayed() {
+		nextStateIndex = 1;
+		stateVector[1] = State.$NullState$;
+	}
+	
+	/* Default exit sequence for state TimeUpdate */
+	private void exitSequence_main_region_displayStates_TimerUpdater_TimeUpdate() {
+		nextStateIndex = 2;
+		stateVector[2] = State.$NullState$;
+		
+		exitAction_main_region_displayStates_TimerUpdater_TimeUpdate();
 	}
 	
 	/* Default exit sequence for region main region */
 	private void exitSequence_main_region() {
 		switch (stateVector[0]) {
-		case main_region_digitalwatch:
-			exitSequence_main_region_digitalwatch();
-			break;
 		case main_region_displayStates_IndigLo_LightOff:
 			exitSequence_main_region_displayStates_IndigLo_LightOff();
 			break;
@@ -443,8 +494,19 @@ public class DigitalwatchStatemachine implements IDigitalwatchStatemachine {
 		}
 		
 		switch (stateVector[1]) {
-		case main_region_displayStates_TimeDisplay_TimerDisplayed:
-			exitSequence_main_region_displayStates_TimeDisplay_TimerDisplayed();
+		case main_region_displayStates_MainDisplay_TimeDisplayed:
+			exitSequence_main_region_displayStates_MainDisplay_TimeDisplayed();
+			break;
+		case main_region_displayStates_MainDisplay_ChronoDisplayed:
+			exitSequence_main_region_displayStates_MainDisplay_ChronoDisplayed();
+			break;
+		default:
+			break;
+		}
+		
+		switch (stateVector[2]) {
+		case main_region_displayStates_TimerUpdater_TimeUpdate:
+			exitSequence_main_region_displayStates_TimerUpdater_TimeUpdate();
 			break;
 		default:
 			break;
@@ -468,20 +530,29 @@ public class DigitalwatchStatemachine implements IDigitalwatchStatemachine {
 		}
 	}
 	
-	/* Default exit sequence for region TimeDisplay */
-	private void exitSequence_main_region_displayStates_TimeDisplay() {
+	/* Default exit sequence for region MainDisplay */
+	private void exitSequence_main_region_displayStates_MainDisplay() {
 		switch (stateVector[1]) {
-		case main_region_displayStates_TimeDisplay_TimerDisplayed:
-			exitSequence_main_region_displayStates_TimeDisplay_TimerDisplayed();
+		case main_region_displayStates_MainDisplay_TimeDisplayed:
+			exitSequence_main_region_displayStates_MainDisplay_TimeDisplayed();
+			break;
+		case main_region_displayStates_MainDisplay_ChronoDisplayed:
+			exitSequence_main_region_displayStates_MainDisplay_ChronoDisplayed();
 			break;
 		default:
 			break;
 		}
 	}
 	
-	/* The reactions of state digitalwatch. */
-	private void react_main_region_digitalwatch() {
-		effect_main_region_digitalwatch_tr0();
+	/* Default exit sequence for region TimerUpdater */
+	private void exitSequence_main_region_displayStates_TimerUpdater() {
+		switch (stateVector[2]) {
+		case main_region_displayStates_TimerUpdater_TimeUpdate:
+			exitSequence_main_region_displayStates_TimerUpdater_TimeUpdate();
+			break;
+		default:
+			break;
+		}
 	}
 	
 	/* The reactions of state LightOff. */
@@ -509,16 +580,34 @@ public class DigitalwatchStatemachine implements IDigitalwatchStatemachine {
 		}
 	}
 	
-	/* The reactions of state TimerDisplayed. */
-	private void react_main_region_displayStates_TimeDisplay_TimerDisplayed() {
-		if (check_main_region_displayStates_TimeDisplay_TimerDisplayed_tr0_tr0()) {
-			effect_main_region_displayStates_TimeDisplay_TimerDisplayed_tr0();
+	/* The reactions of state TimeDisplayed. */
+	private void react_main_region_displayStates_MainDisplay_TimeDisplayed() {
+		if (check_main_region_displayStates_MainDisplay_TimeDisplayed_tr0_tr0()) {
+			effect_main_region_displayStates_MainDisplay_TimeDisplayed_tr0();
+		} else {
+			if (check_main_region_displayStates_MainDisplay_TimeDisplayed_tr1_tr1()) {
+				effect_main_region_displayStates_MainDisplay_TimeDisplayed_tr1();
+			}
+		}
+	}
+	
+	/* The reactions of state ChronoDisplayed. */
+	private void react_main_region_displayStates_MainDisplay_ChronoDisplayed() {
+		if (check_main_region_displayStates_MainDisplay_ChronoDisplayed_tr0_tr0()) {
+			effect_main_region_displayStates_MainDisplay_ChronoDisplayed_tr0();
+		}
+	}
+	
+	/* The reactions of state TimeUpdate. */
+	private void react_main_region_displayStates_TimerUpdater_TimeUpdate() {
+		if (check_main_region_displayStates_TimerUpdater_TimeUpdate_tr0_tr0()) {
+			effect_main_region_displayStates_TimerUpdater_TimeUpdate_tr0();
 		}
 	}
 	
 	/* Default react sequence for initial entry  */
 	private void react_main_region__entry_Default() {
-		enterSequence_main_region_digitalwatch_default();
+		enterSequence_main_region_displayStates_default();
 	}
 	
 	/* Default react sequence for initial entry  */
@@ -527,8 +616,13 @@ public class DigitalwatchStatemachine implements IDigitalwatchStatemachine {
 	}
 	
 	/* Default react sequence for initial entry  */
-	private void react_main_region_displayStates_TimeDisplay__entry_Default() {
-		enterSequence_main_region_displayStates_TimeDisplay_TimerDisplayed_default();
+	private void react_main_region_displayStates_MainDisplay__entry_Default() {
+		enterSequence_main_region_displayStates_MainDisplay_TimeDisplayed_default();
+	}
+	
+	/* Default react sequence for initial entry  */
+	private void react_main_region_displayStates_TimerUpdater__entry_Default() {
+		enterSequence_main_region_displayStates_TimerUpdater_TimeUpdate_default();
 	}
 	
 	public void runCycle() {
@@ -538,9 +632,6 @@ public class DigitalwatchStatemachine implements IDigitalwatchStatemachine {
 		clearOutEvents();
 		for (nextStateIndex = 0; nextStateIndex < stateVector.length; nextStateIndex++) {
 			switch (stateVector[nextStateIndex]) {
-			case main_region_digitalwatch:
-				react_main_region_digitalwatch();
-				break;
 			case main_region_displayStates_IndigLo_LightOff:
 				react_main_region_displayStates_IndigLo_LightOff();
 				break;
@@ -550,8 +641,14 @@ public class DigitalwatchStatemachine implements IDigitalwatchStatemachine {
 			case main_region_displayStates_IndigLo_LightDelay:
 				react_main_region_displayStates_IndigLo_LightDelay();
 				break;
-			case main_region_displayStates_TimeDisplay_TimerDisplayed:
-				react_main_region_displayStates_TimeDisplay_TimerDisplayed();
+			case main_region_displayStates_MainDisplay_TimeDisplayed:
+				react_main_region_displayStates_MainDisplay_TimeDisplayed();
+				break;
+			case main_region_displayStates_MainDisplay_ChronoDisplayed:
+				react_main_region_displayStates_MainDisplay_ChronoDisplayed();
+				break;
+			case main_region_displayStates_TimerUpdater_TimeUpdate:
+				react_main_region_displayStates_TimerUpdater_TimeUpdate();
 				break;
 			default:
 				// $NullState$
