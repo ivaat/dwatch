@@ -109,17 +109,43 @@ public class DigitalwatchStatemachine implements IDigitalwatchStatemachine {
 		main_region_displayStates_IndigLo_LightDelay,
 		main_region_displayStates_MainDisplay_TimeDisplayed,
 		main_region_displayStates_MainDisplay_ChronoDisplayed,
+		main_region_displayStates_Chrono_ChronoRunning,
+		main_region_displayStates_Chrono_ChronoWaiting,
 		main_region_displayStates_TimerUpdater_TimeUpdate,
 		$NullState$
 	};
 	
-	private final State[] stateVector = new State[3];
+	private final State[] stateVector = new State[4];
 	
 	private int nextStateIndex;
 	
 	private ITimer timer;
 	
-	private final boolean[] timeEvents = new boolean[3];
+	private final boolean[] timeEvents = new boolean[4];
+	private boolean startChrono;
+	
+	private boolean stopChrono;
+	
+	private String displayed;
+	
+	protected void setDisplayed(String value) {
+		displayed = value;
+	}
+	
+	protected String getDisplayed() {
+		return displayed;
+	}
+	
+	private boolean chronoRunning;
+	
+	protected void setChronoRunning(boolean value) {
+		chronoRunning = value;
+	}
+	
+	protected boolean getChronoRunning() {
+		return chronoRunning;
+	}
+	
 	public DigitalwatchStatemachine() {
 		sCIButtons = new SCIButtonsImpl();
 		sCIDisplay = new SCIDisplayImpl();
@@ -131,11 +157,14 @@ public class DigitalwatchStatemachine implements IDigitalwatchStatemachine {
 		if (timer == null) {
 			throw new IllegalStateException("timer not set.");
 		}
-		for (int i = 0; i < 3; i++) {
+		for (int i = 0; i < 4; i++) {
 			stateVector[i] = State.$NullState$;
 		}
 		clearEvents();
 		clearOutEvents();
+		setDisplayed("");
+		
+		setChronoRunning(false);
 	}
 	
 	public void enter() {
@@ -157,7 +186,7 @@ public class DigitalwatchStatemachine implements IDigitalwatchStatemachine {
 	 * @see IStatemachine#isActive()
 	 */
 	public boolean isActive() {
-		return stateVector[0] != State.$NullState$||stateVector[1] != State.$NullState$||stateVector[2] != State.$NullState$;
+		return stateVector[0] != State.$NullState$||stateVector[1] != State.$NullState$||stateVector[2] != State.$NullState$||stateVector[3] != State.$NullState$;
 	}
 	
 	/** 
@@ -174,6 +203,8 @@ public class DigitalwatchStatemachine implements IDigitalwatchStatemachine {
 	protected void clearEvents() {
 		sCIButtons.clearEvents();
 		sCILogicUnit.clearEvents();
+		startChrono = false;
+		stopChrono = false;
 		for (int i=0; i<timeEvents.length; i++) {
 			timeEvents[i] = false;
 		}
@@ -204,8 +235,12 @@ public class DigitalwatchStatemachine implements IDigitalwatchStatemachine {
 			return stateVector[1] == State.main_region_displayStates_MainDisplay_TimeDisplayed;
 		case main_region_displayStates_MainDisplay_ChronoDisplayed:
 			return stateVector[1] == State.main_region_displayStates_MainDisplay_ChronoDisplayed;
+		case main_region_displayStates_Chrono_ChronoRunning:
+			return stateVector[2] == State.main_region_displayStates_Chrono_ChronoRunning;
+		case main_region_displayStates_Chrono_ChronoWaiting:
+			return stateVector[2] == State.main_region_displayStates_Chrono_ChronoWaiting;
 		case main_region_displayStates_TimerUpdater_TimeUpdate:
-			return stateVector[2] == State.main_region_displayStates_TimerUpdater_TimeUpdate;
+			return stateVector[3] == State.main_region_displayStates_TimerUpdater_TimeUpdate;
 		default:
 			return false;
 		}
@@ -247,6 +282,14 @@ public class DigitalwatchStatemachine implements IDigitalwatchStatemachine {
 		return sCILogicUnit;
 	}
 	
+	private void raiseStartChrono() {
+		startChrono = true;
+	}
+	
+	private void raiseStopChrono() {
+		stopChrono = true;
+	}
+	
 	private boolean check_main_region_displayStates_IndigLo_LightOff_tr0_tr0() {
 		return sCIButtons.topRightPressed;
 	}
@@ -264,10 +307,6 @@ public class DigitalwatchStatemachine implements IDigitalwatchStatemachine {
 	}
 	
 	private boolean check_main_region_displayStates_MainDisplay_TimeDisplayed_tr0_tr0() {
-		return timeEvents[1];
-	}
-	
-	private boolean check_main_region_displayStates_MainDisplay_TimeDisplayed_tr1_tr1() {
 		return sCIButtons.topLeftPressed;
 	}
 	
@@ -275,8 +314,32 @@ public class DigitalwatchStatemachine implements IDigitalwatchStatemachine {
 		return sCIButtons.topLeftPressed;
 	}
 	
-	private boolean check_main_region_displayStates_TimerUpdater_TimeUpdate_tr0_tr0() {
+	private boolean check_main_region_displayStates_MainDisplay_ChronoDisplayed_tr1_tr1() {
+		return (sCIButtons.bottomRightPressed) && (getChronoRunning()==false);
+	}
+	
+	private boolean check_main_region_displayStates_MainDisplay_ChronoDisplayed_tr2_tr2() {
+		return (sCIButtons.bottomRightPressed) && (getChronoRunning()==true);
+	}
+	
+	private boolean check_main_region_displayStates_MainDisplay_ChronoDisplayed_tr3_tr3() {
+		return (timeEvents[1]) && ((getDisplayed()== null?"chrono" ==null :getDisplayed().equals("chrono")) && getChronoRunning()==true);
+	}
+	
+	private boolean check_main_region_displayStates_Chrono_ChronoRunning_tr0_tr0() {
 		return timeEvents[2];
+	}
+	
+	private boolean check_main_region_displayStates_Chrono_ChronoRunning_tr1_tr1() {
+		return stopChrono;
+	}
+	
+	private boolean check_main_region_displayStates_Chrono_ChronoWaiting_tr0_tr0() {
+		return startChrono;
+	}
+	
+	private boolean check_main_region_displayStates_TimerUpdater_TimeUpdate_tr0_tr0() {
+		return timeEvents[3];
 	}
 	
 	private void effect_main_region_displayStates_IndigLo_LightOff_tr0() {
@@ -301,19 +364,52 @@ public class DigitalwatchStatemachine implements IDigitalwatchStatemachine {
 	
 	private void effect_main_region_displayStates_MainDisplay_TimeDisplayed_tr0() {
 		exitSequence_main_region_displayStates_MainDisplay_TimeDisplayed();
-		enterSequence_main_region_displayStates_MainDisplay_TimeDisplayed_default();
-	}
-	
-	private void effect_main_region_displayStates_MainDisplay_TimeDisplayed_tr1() {
-		exitSequence_main_region_displayStates_MainDisplay_TimeDisplayed();
-		sCIDisplay.operationCallback.refreshChronoDisplay();
-		
 		enterSequence_main_region_displayStates_MainDisplay_ChronoDisplayed_default();
 	}
 	
 	private void effect_main_region_displayStates_MainDisplay_ChronoDisplayed_tr0() {
 		exitSequence_main_region_displayStates_MainDisplay_ChronoDisplayed();
 		enterSequence_main_region_displayStates_MainDisplay_TimeDisplayed_default();
+	}
+	
+	private void effect_main_region_displayStates_MainDisplay_ChronoDisplayed_tr1() {
+		exitSequence_main_region_displayStates_MainDisplay_ChronoDisplayed();
+		raiseStartChrono();
+		
+		enterSequence_main_region_displayStates_MainDisplay_ChronoDisplayed_default();
+	}
+	
+	private void effect_main_region_displayStates_MainDisplay_ChronoDisplayed_tr2() {
+		exitSequence_main_region_displayStates_MainDisplay_ChronoDisplayed();
+		raiseStopChrono();
+		
+		enterSequence_main_region_displayStates_MainDisplay_ChronoDisplayed_default();
+	}
+	
+	private void effect_main_region_displayStates_MainDisplay_ChronoDisplayed_tr3() {
+		exitSequence_main_region_displayStates_MainDisplay_ChronoDisplayed();
+		sCIDisplay.operationCallback.refreshChronoDisplay();
+		
+		enterSequence_main_region_displayStates_MainDisplay_ChronoDisplayed_default();
+	}
+	
+	private void effect_main_region_displayStates_Chrono_ChronoRunning_tr0() {
+		exitSequence_main_region_displayStates_Chrono_ChronoRunning();
+		sCILogicUnit.operationCallback.increaseChronoByOne();
+		
+		enterSequence_main_region_displayStates_Chrono_ChronoRunning_default();
+	}
+	
+	private void effect_main_region_displayStates_Chrono_ChronoRunning_tr1() {
+		exitSequence_main_region_displayStates_Chrono_ChronoRunning();
+		enterSequence_main_region_displayStates_Chrono_ChronoWaiting_default();
+	}
+	
+	private void effect_main_region_displayStates_Chrono_ChronoWaiting_tr0() {
+		exitSequence_main_region_displayStates_Chrono_ChronoWaiting();
+		setChronoRunning(true);
+		
+		enterSequence_main_region_displayStates_Chrono_ChronoRunning_default();
 	}
 	
 	private void effect_main_region_displayStates_TimerUpdater_TimeUpdate_tr0() {
@@ -340,16 +436,38 @@ public class DigitalwatchStatemachine implements IDigitalwatchStatemachine {
 	
 	/* Entry action for state 'TimeDisplayed'. */
 	private void entryAction_main_region_displayStates_MainDisplay_TimeDisplayed() {
-		timer.setTimer(this, 1, 1*1000, false);
+		setDisplayed("time");
+	}
+	
+	/* Entry action for state 'ChronoDisplayed'. */
+	private void entryAction_main_region_displayStates_MainDisplay_ChronoDisplayed() {
+		timer.setTimer(this, 1, 250, false);
 		
-		sCIDisplay.operationCallback.refreshTimeDisplay();
+		setDisplayed("chrono");
 		
-		sCIDisplay.operationCallback.refreshDateDisplay();
+		sCIDisplay.operationCallback.refreshChronoDisplay();
+	}
+	
+	/* Entry action for state 'ChronoRunning'. */
+	private void entryAction_main_region_displayStates_Chrono_ChronoRunning() {
+		timer.setTimer(this, 2, 10, false);
+	}
+	
+	/* Entry action for state 'ChronoWaiting'. */
+	private void entryAction_main_region_displayStates_Chrono_ChronoWaiting() {
+		setChronoRunning(false);
 	}
 	
 	/* Entry action for state 'TimeUpdate'. */
 	private void entryAction_main_region_displayStates_TimerUpdater_TimeUpdate() {
-		timer.setTimer(this, 2, 1*1000, false);
+		timer.setTimer(this, 3, 1*1000, false);
+		
+		if ((getDisplayed()== null?"time" ==null :getDisplayed().equals("time"))) {
+			sCIDisplay.operationCallback.refreshTimeDisplay();
+		}
+		if ((getDisplayed()== null?"time" ==null :getDisplayed().equals("time"))) {
+			sCIDisplay.operationCallback.refreshDateDisplay();
+		}
 	}
 	
 	/* Exit action for state 'LightDelay'. */
@@ -357,20 +475,26 @@ public class DigitalwatchStatemachine implements IDigitalwatchStatemachine {
 		timer.unsetTimer(this, 0);
 	}
 	
-	/* Exit action for state 'TimeDisplayed'. */
-	private void exitAction_main_region_displayStates_MainDisplay_TimeDisplayed() {
+	/* Exit action for state 'ChronoDisplayed'. */
+	private void exitAction_main_region_displayStates_MainDisplay_ChronoDisplayed() {
 		timer.unsetTimer(this, 1);
+	}
+	
+	/* Exit action for state 'ChronoRunning'. */
+	private void exitAction_main_region_displayStates_Chrono_ChronoRunning() {
+		timer.unsetTimer(this, 2);
 	}
 	
 	/* Exit action for state 'TimeUpdate'. */
 	private void exitAction_main_region_displayStates_TimerUpdater_TimeUpdate() {
-		timer.unsetTimer(this, 2);
+		timer.unsetTimer(this, 3);
 	}
 	
 	/* 'default' enter sequence for state displayStates */
 	private void enterSequence_main_region_displayStates_default() {
 		enterSequence_main_region_displayStates_IndigLo_default();
 		enterSequence_main_region_displayStates_MainDisplay_default();
+		enterSequence_main_region_displayStates_Chrono_default();
 		enterSequence_main_region_displayStates_TimerUpdater_default();
 	}
 	
@@ -404,15 +528,30 @@ public class DigitalwatchStatemachine implements IDigitalwatchStatemachine {
 	
 	/* 'default' enter sequence for state ChronoDisplayed */
 	private void enterSequence_main_region_displayStates_MainDisplay_ChronoDisplayed_default() {
+		entryAction_main_region_displayStates_MainDisplay_ChronoDisplayed();
 		nextStateIndex = 1;
 		stateVector[1] = State.main_region_displayStates_MainDisplay_ChronoDisplayed;
+	}
+	
+	/* 'default' enter sequence for state ChronoRunning */
+	private void enterSequence_main_region_displayStates_Chrono_ChronoRunning_default() {
+		entryAction_main_region_displayStates_Chrono_ChronoRunning();
+		nextStateIndex = 2;
+		stateVector[2] = State.main_region_displayStates_Chrono_ChronoRunning;
+	}
+	
+	/* 'default' enter sequence for state ChronoWaiting */
+	private void enterSequence_main_region_displayStates_Chrono_ChronoWaiting_default() {
+		entryAction_main_region_displayStates_Chrono_ChronoWaiting();
+		nextStateIndex = 2;
+		stateVector[2] = State.main_region_displayStates_Chrono_ChronoWaiting;
 	}
 	
 	/* 'default' enter sequence for state TimeUpdate */
 	private void enterSequence_main_region_displayStates_TimerUpdater_TimeUpdate_default() {
 		entryAction_main_region_displayStates_TimerUpdater_TimeUpdate();
-		nextStateIndex = 2;
-		stateVector[2] = State.main_region_displayStates_TimerUpdater_TimeUpdate;
+		nextStateIndex = 3;
+		stateVector[3] = State.main_region_displayStates_TimerUpdater_TimeUpdate;
 	}
 	
 	/* 'default' enter sequence for region main region */
@@ -428,6 +567,11 @@ public class DigitalwatchStatemachine implements IDigitalwatchStatemachine {
 	/* 'default' enter sequence for region MainDisplay */
 	private void enterSequence_main_region_displayStates_MainDisplay_default() {
 		react_main_region_displayStates_MainDisplay__entry_Default();
+	}
+	
+	/* 'default' enter sequence for region Chrono */
+	private void enterSequence_main_region_displayStates_Chrono_default() {
+		react_main_region_displayStates_Chrono__entry_Default();
 	}
 	
 	/* 'default' enter sequence for region TimerUpdater */
@@ -459,20 +603,34 @@ public class DigitalwatchStatemachine implements IDigitalwatchStatemachine {
 	private void exitSequence_main_region_displayStates_MainDisplay_TimeDisplayed() {
 		nextStateIndex = 1;
 		stateVector[1] = State.$NullState$;
-		
-		exitAction_main_region_displayStates_MainDisplay_TimeDisplayed();
 	}
 	
 	/* Default exit sequence for state ChronoDisplayed */
 	private void exitSequence_main_region_displayStates_MainDisplay_ChronoDisplayed() {
 		nextStateIndex = 1;
 		stateVector[1] = State.$NullState$;
+		
+		exitAction_main_region_displayStates_MainDisplay_ChronoDisplayed();
+	}
+	
+	/* Default exit sequence for state ChronoRunning */
+	private void exitSequence_main_region_displayStates_Chrono_ChronoRunning() {
+		nextStateIndex = 2;
+		stateVector[2] = State.$NullState$;
+		
+		exitAction_main_region_displayStates_Chrono_ChronoRunning();
+	}
+	
+	/* Default exit sequence for state ChronoWaiting */
+	private void exitSequence_main_region_displayStates_Chrono_ChronoWaiting() {
+		nextStateIndex = 2;
+		stateVector[2] = State.$NullState$;
 	}
 	
 	/* Default exit sequence for state TimeUpdate */
 	private void exitSequence_main_region_displayStates_TimerUpdater_TimeUpdate() {
-		nextStateIndex = 2;
-		stateVector[2] = State.$NullState$;
+		nextStateIndex = 3;
+		stateVector[3] = State.$NullState$;
 		
 		exitAction_main_region_displayStates_TimerUpdater_TimeUpdate();
 	}
@@ -505,6 +663,17 @@ public class DigitalwatchStatemachine implements IDigitalwatchStatemachine {
 		}
 		
 		switch (stateVector[2]) {
+		case main_region_displayStates_Chrono_ChronoRunning:
+			exitSequence_main_region_displayStates_Chrono_ChronoRunning();
+			break;
+		case main_region_displayStates_Chrono_ChronoWaiting:
+			exitSequence_main_region_displayStates_Chrono_ChronoWaiting();
+			break;
+		default:
+			break;
+		}
+		
+		switch (stateVector[3]) {
 		case main_region_displayStates_TimerUpdater_TimeUpdate:
 			exitSequence_main_region_displayStates_TimerUpdater_TimeUpdate();
 			break;
@@ -544,9 +713,23 @@ public class DigitalwatchStatemachine implements IDigitalwatchStatemachine {
 		}
 	}
 	
+	/* Default exit sequence for region Chrono */
+	private void exitSequence_main_region_displayStates_Chrono() {
+		switch (stateVector[2]) {
+		case main_region_displayStates_Chrono_ChronoRunning:
+			exitSequence_main_region_displayStates_Chrono_ChronoRunning();
+			break;
+		case main_region_displayStates_Chrono_ChronoWaiting:
+			exitSequence_main_region_displayStates_Chrono_ChronoWaiting();
+			break;
+		default:
+			break;
+		}
+	}
+	
 	/* Default exit sequence for region TimerUpdater */
 	private void exitSequence_main_region_displayStates_TimerUpdater() {
-		switch (stateVector[2]) {
+		switch (stateVector[3]) {
 		case main_region_displayStates_TimerUpdater_TimeUpdate:
 			exitSequence_main_region_displayStates_TimerUpdater_TimeUpdate();
 			break;
@@ -584,10 +767,6 @@ public class DigitalwatchStatemachine implements IDigitalwatchStatemachine {
 	private void react_main_region_displayStates_MainDisplay_TimeDisplayed() {
 		if (check_main_region_displayStates_MainDisplay_TimeDisplayed_tr0_tr0()) {
 			effect_main_region_displayStates_MainDisplay_TimeDisplayed_tr0();
-		} else {
-			if (check_main_region_displayStates_MainDisplay_TimeDisplayed_tr1_tr1()) {
-				effect_main_region_displayStates_MainDisplay_TimeDisplayed_tr1();
-			}
 		}
 	}
 	
@@ -595,6 +774,36 @@ public class DigitalwatchStatemachine implements IDigitalwatchStatemachine {
 	private void react_main_region_displayStates_MainDisplay_ChronoDisplayed() {
 		if (check_main_region_displayStates_MainDisplay_ChronoDisplayed_tr0_tr0()) {
 			effect_main_region_displayStates_MainDisplay_ChronoDisplayed_tr0();
+		} else {
+			if (check_main_region_displayStates_MainDisplay_ChronoDisplayed_tr1_tr1()) {
+				effect_main_region_displayStates_MainDisplay_ChronoDisplayed_tr1();
+			} else {
+				if (check_main_region_displayStates_MainDisplay_ChronoDisplayed_tr2_tr2()) {
+					effect_main_region_displayStates_MainDisplay_ChronoDisplayed_tr2();
+				} else {
+					if (check_main_region_displayStates_MainDisplay_ChronoDisplayed_tr3_tr3()) {
+						effect_main_region_displayStates_MainDisplay_ChronoDisplayed_tr3();
+					}
+				}
+			}
+		}
+	}
+	
+	/* The reactions of state ChronoRunning. */
+	private void react_main_region_displayStates_Chrono_ChronoRunning() {
+		if (check_main_region_displayStates_Chrono_ChronoRunning_tr0_tr0()) {
+			effect_main_region_displayStates_Chrono_ChronoRunning_tr0();
+		} else {
+			if (check_main_region_displayStates_Chrono_ChronoRunning_tr1_tr1()) {
+				effect_main_region_displayStates_Chrono_ChronoRunning_tr1();
+			}
+		}
+	}
+	
+	/* The reactions of state ChronoWaiting. */
+	private void react_main_region_displayStates_Chrono_ChronoWaiting() {
+		if (check_main_region_displayStates_Chrono_ChronoWaiting_tr0_tr0()) {
+			effect_main_region_displayStates_Chrono_ChronoWaiting_tr0();
 		}
 	}
 	
@@ -618,6 +827,11 @@ public class DigitalwatchStatemachine implements IDigitalwatchStatemachine {
 	/* Default react sequence for initial entry  */
 	private void react_main_region_displayStates_MainDisplay__entry_Default() {
 		enterSequence_main_region_displayStates_MainDisplay_TimeDisplayed_default();
+	}
+	
+	/* Default react sequence for initial entry  */
+	private void react_main_region_displayStates_Chrono__entry_Default() {
+		enterSequence_main_region_displayStates_Chrono_ChronoWaiting_default();
 	}
 	
 	/* Default react sequence for initial entry  */
@@ -646,6 +860,12 @@ public class DigitalwatchStatemachine implements IDigitalwatchStatemachine {
 				break;
 			case main_region_displayStates_MainDisplay_ChronoDisplayed:
 				react_main_region_displayStates_MainDisplay_ChronoDisplayed();
+				break;
+			case main_region_displayStates_Chrono_ChronoRunning:
+				react_main_region_displayStates_Chrono_ChronoRunning();
+				break;
+			case main_region_displayStates_Chrono_ChronoWaiting:
+				react_main_region_displayStates_Chrono_ChronoWaiting();
 				break;
 			case main_region_displayStates_TimerUpdater_TimeUpdate:
 				react_main_region_displayStates_TimerUpdater_TimeUpdate();
