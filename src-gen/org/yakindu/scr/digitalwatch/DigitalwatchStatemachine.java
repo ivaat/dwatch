@@ -114,20 +114,23 @@ public class DigitalwatchStatemachine implements IDigitalwatchStatemachine {
 		main_region_displayStates_MainDisplay_AlarmInDisplayDelay,
 		main_region_displayStates_MainDisplay_AlarmDisplayed,
 		main_region_displayStates_MainDisplay_AlarmEdit,
-		main_region_displayStates_MainDisplay_AlarmOutDisplayDelay,
+		main_region_displayStates_MainDisplay_TimeEditingDelay,
 		main_region_displayStates_Chrono_ChronoRunning,
 		main_region_displayStates_Chrono_ChronoWaiting,
 		main_region_displayStates_TimerUpdater_TimeUpdate,
+		main_region_displayStates_TimeSelectionAnimation_SelectionShown,
+		main_region_displayStates_TimeSelectionAnimation_SelectionHidden,
+		main_region_displayStates_TimeSelectionAnimation_Intermediate,
 		$NullState$
 	};
 	
-	private final State[] stateVector = new State[4];
+	private final State[] stateVector = new State[5];
 	
 	private int nextStateIndex;
 	
 	private ITimer timer;
 	
-	private final boolean[] timeEvents = new boolean[9];
+	private final boolean[] timeEvents = new boolean[13];
 	private boolean startChrono;
 	
 	private boolean stopChrono;
@@ -152,6 +155,26 @@ public class DigitalwatchStatemachine implements IDigitalwatchStatemachine {
 		return timeEditModeActive;
 	}
 	
+	private boolean alarmEditModeActive;
+	
+	protected void setAlarmEditModeActive(boolean value) {
+		alarmEditModeActive = value;
+	}
+	
+	protected boolean getAlarmEditModeActive() {
+		return alarmEditModeActive;
+	}
+	
+	private String alarmTime;
+	
+	protected void setAlarmTime(String value) {
+		alarmTime = value;
+	}
+	
+	protected String getAlarmTime() {
+		return alarmTime;
+	}
+	
 	public DigitalwatchStatemachine() {
 		sCIButtons = new SCIButtonsImpl();
 		sCIDisplay = new SCIDisplayImpl();
@@ -163,7 +186,7 @@ public class DigitalwatchStatemachine implements IDigitalwatchStatemachine {
 		if (timer == null) {
 			throw new IllegalStateException("timer not set.");
 		}
-		for (int i = 0; i < 4; i++) {
+		for (int i = 0; i < 5; i++) {
 			stateVector[i] = State.$NullState$;
 		}
 		clearEvents();
@@ -171,6 +194,10 @@ public class DigitalwatchStatemachine implements IDigitalwatchStatemachine {
 		setChronoRunning(false);
 		
 		setTimeEditModeActive(false);
+		
+		setAlarmEditModeActive(false);
+		
+		setAlarmTime("");
 	}
 	
 	public void enter() {
@@ -192,7 +219,7 @@ public class DigitalwatchStatemachine implements IDigitalwatchStatemachine {
 	 * @see IStatemachine#isActive()
 	 */
 	public boolean isActive() {
-		return stateVector[0] != State.$NullState$||stateVector[1] != State.$NullState$||stateVector[2] != State.$NullState$||stateVector[3] != State.$NullState$;
+		return stateVector[0] != State.$NullState$||stateVector[1] != State.$NullState$||stateVector[2] != State.$NullState$||stateVector[3] != State.$NullState$||stateVector[4] != State.$NullState$;
 	}
 	
 	/** 
@@ -230,7 +257,7 @@ public class DigitalwatchStatemachine implements IDigitalwatchStatemachine {
 		switch (state) {
 		case main_region_displayStates:
 			return stateVector[0].ordinal() >= State.
-					main_region_displayStates.ordinal()&& stateVector[0].ordinal() <= State.main_region_displayStates_TimerUpdater_TimeUpdate.ordinal();
+					main_region_displayStates.ordinal()&& stateVector[0].ordinal() <= State.main_region_displayStates_TimeSelectionAnimation_Intermediate.ordinal();
 		case main_region_displayStates_IndigLo_LightOff:
 			return stateVector[0] == State.main_region_displayStates_IndigLo_LightOff;
 		case main_region_displayStates_IndigLo_LightActive:
@@ -251,14 +278,20 @@ public class DigitalwatchStatemachine implements IDigitalwatchStatemachine {
 			return stateVector[1] == State.main_region_displayStates_MainDisplay_AlarmDisplayed;
 		case main_region_displayStates_MainDisplay_AlarmEdit:
 			return stateVector[1] == State.main_region_displayStates_MainDisplay_AlarmEdit;
-		case main_region_displayStates_MainDisplay_AlarmOutDisplayDelay:
-			return stateVector[1] == State.main_region_displayStates_MainDisplay_AlarmOutDisplayDelay;
+		case main_region_displayStates_MainDisplay_TimeEditingDelay:
+			return stateVector[1] == State.main_region_displayStates_MainDisplay_TimeEditingDelay;
 		case main_region_displayStates_Chrono_ChronoRunning:
 			return stateVector[2] == State.main_region_displayStates_Chrono_ChronoRunning;
 		case main_region_displayStates_Chrono_ChronoWaiting:
 			return stateVector[2] == State.main_region_displayStates_Chrono_ChronoWaiting;
 		case main_region_displayStates_TimerUpdater_TimeUpdate:
 			return stateVector[3] == State.main_region_displayStates_TimerUpdater_TimeUpdate;
+		case main_region_displayStates_TimeSelectionAnimation_SelectionShown:
+			return stateVector[4] == State.main_region_displayStates_TimeSelectionAnimation_SelectionShown;
+		case main_region_displayStates_TimeSelectionAnimation_SelectionHidden:
+			return stateVector[4] == State.main_region_displayStates_TimeSelectionAnimation_SelectionHidden;
+		case main_region_displayStates_TimeSelectionAnimation_Intermediate:
+			return stateVector[4] == State.main_region_displayStates_TimeSelectionAnimation_Intermediate;
 		default:
 			return false;
 		}
@@ -364,8 +397,16 @@ public class DigitalwatchStatemachine implements IDigitalwatchStatemachine {
 		return timeEvents[3];
 	}
 	
-	private boolean check_main_region_displayStates_MainDisplay_AlarmInDisplayDelay_tr0_tr0() {
+	private boolean check_main_region_displayStates_MainDisplay_TimeEditingActive_tr0_tr0() {
+		return sCIButtons.bottomLeftPressed;
+	}
+	
+	private boolean check_main_region_displayStates_MainDisplay_TimeEditingActive_tr1_tr1() {
 		return timeEvents[4];
+	}
+	
+	private boolean check_main_region_displayStates_MainDisplay_AlarmInDisplayDelay_tr0_tr0() {
+		return timeEvents[5];
 	}
 	
 	private boolean check_main_region_displayStates_MainDisplay_AlarmInDisplayDelay_tr1_tr1() {
@@ -373,23 +414,31 @@ public class DigitalwatchStatemachine implements IDigitalwatchStatemachine {
 	}
 	
 	private boolean check_main_region_displayStates_MainDisplay_AlarmDisplayed_tr0_tr0() {
-		return sCIButtons.bottomLeftPressed;
-	}
-	
-	private boolean check_main_region_displayStates_MainDisplay_AlarmEdit_tr0_tr0() {
-		return timeEvents[5];
-	}
-	
-	private boolean check_main_region_displayStates_MainDisplay_AlarmOutDisplayDelay_tr0_tr0() {
-		return sCIButtons.bottomLeftReleased;
-	}
-	
-	private boolean check_main_region_displayStates_MainDisplay_AlarmOutDisplayDelay_tr1_tr1() {
 		return timeEvents[6];
 	}
 	
-	private boolean check_main_region_displayStates_Chrono_ChronoRunning_tr0_tr0() {
+	private boolean check_main_region_displayStates_MainDisplay_AlarmEdit_tr0_tr0() {
 		return timeEvents[7];
+	}
+	
+	private boolean check_main_region_displayStates_MainDisplay_AlarmEdit_tr1_tr1() {
+		return sCIButtons.bottomLeftPressed;
+	}
+	
+	private boolean check_main_region_displayStates_MainDisplay_TimeEditingDelay_tr0_tr0() {
+		return (sCIButtons.bottomLeftReleased) && (getAlarmEditModeActive()==true);
+	}
+	
+	private boolean check_main_region_displayStates_MainDisplay_TimeEditingDelay_tr1_tr1() {
+		return timeEvents[8];
+	}
+	
+	private boolean check_main_region_displayStates_MainDisplay_TimeEditingDelay_tr2_tr2() {
+		return (sCIButtons.bottomLeftReleased) && (getTimeEditModeActive()==true);
+	}
+	
+	private boolean check_main_region_displayStates_Chrono_ChronoRunning_tr0_tr0() {
+		return timeEvents[9];
 	}
 	
 	private boolean check_main_region_displayStates_Chrono_ChronoRunning_tr1_tr1() {
@@ -401,7 +450,19 @@ public class DigitalwatchStatemachine implements IDigitalwatchStatemachine {
 	}
 	
 	private boolean check_main_region_displayStates_TimerUpdater_TimeUpdate_tr0_tr0() {
-		return (timeEvents[8]) && (getTimeEditModeActive()==false);
+		return (timeEvents[10]) && (getTimeEditModeActive()==false);
+	}
+	
+	private boolean check_main_region_displayStates_TimeSelectionAnimation_SelectionShown_tr0_tr0() {
+		return (timeEvents[11]) && (getTimeEditModeActive()==true || getAlarmEditModeActive()==true);
+	}
+	
+	private boolean check_main_region_displayStates_TimeSelectionAnimation_SelectionHidden_tr0_tr0() {
+		return (timeEvents[12]) && (getTimeEditModeActive()==true || getAlarmEditModeActive()==true);
+	}
+	
+	private boolean check_main_region_displayStates_TimeSelectionAnimation_Intermediate_tr0_tr0() {
+		return getTimeEditModeActive()==true || getAlarmEditModeActive()==true;
 	}
 	
 	private void effect_main_region_displayStates_IndigLo_LightOff_tr0() {
@@ -480,6 +541,16 @@ public class DigitalwatchStatemachine implements IDigitalwatchStatemachine {
 		enterSequence_main_region_displayStates_MainDisplay_TimeEditingActive_default();
 	}
 	
+	private void effect_main_region_displayStates_MainDisplay_TimeEditingActive_tr0() {
+		exitSequence_main_region_displayStates_MainDisplay_TimeEditingActive();
+		enterSequence_main_region_displayStates_MainDisplay_TimeEditingDelay_default();
+	}
+	
+	private void effect_main_region_displayStates_MainDisplay_TimeEditingActive_tr1() {
+		exitSequence_main_region_displayStates_MainDisplay_TimeEditingActive();
+		enterSequence_main_region_displayStates_MainDisplay_TimeDisplayed_default();
+	}
+	
 	private void effect_main_region_displayStates_MainDisplay_AlarmInDisplayDelay_tr0() {
 		exitSequence_main_region_displayStates_MainDisplay_AlarmInDisplayDelay();
 		enterSequence_main_region_displayStates_MainDisplay_AlarmEdit_default();
@@ -492,7 +563,7 @@ public class DigitalwatchStatemachine implements IDigitalwatchStatemachine {
 	
 	private void effect_main_region_displayStates_MainDisplay_AlarmDisplayed_tr0() {
 		exitSequence_main_region_displayStates_MainDisplay_AlarmDisplayed();
-		enterSequence_main_region_displayStates_MainDisplay_AlarmOutDisplayDelay_default();
+		enterSequence_main_region_displayStates_MainDisplay_TimeDisplayed_default();
 	}
 	
 	private void effect_main_region_displayStates_MainDisplay_AlarmEdit_tr0() {
@@ -500,14 +571,30 @@ public class DigitalwatchStatemachine implements IDigitalwatchStatemachine {
 		enterSequence_main_region_displayStates_MainDisplay_AlarmDisplayed_default();
 	}
 	
-	private void effect_main_region_displayStates_MainDisplay_AlarmOutDisplayDelay_tr0() {
-		exitSequence_main_region_displayStates_MainDisplay_AlarmOutDisplayDelay();
-		enterSequence_main_region_displayStates_MainDisplay_TimeDisplayed_default();
+	private void effect_main_region_displayStates_MainDisplay_AlarmEdit_tr1() {
+		exitSequence_main_region_displayStates_MainDisplay_AlarmEdit();
+		enterSequence_main_region_displayStates_MainDisplay_TimeEditingDelay_default();
 	}
 	
-	private void effect_main_region_displayStates_MainDisplay_AlarmOutDisplayDelay_tr1() {
-		exitSequence_main_region_displayStates_MainDisplay_AlarmOutDisplayDelay();
+	private void effect_main_region_displayStates_MainDisplay_TimeEditingDelay_tr0() {
+		exitSequence_main_region_displayStates_MainDisplay_TimeEditingDelay();
+		sCILogicUnit.operationCallback.increaseSelection();
+		
 		enterSequence_main_region_displayStates_MainDisplay_AlarmEdit_default();
+	}
+	
+	private void effect_main_region_displayStates_MainDisplay_TimeEditingDelay_tr1() {
+		exitSequence_main_region_displayStates_MainDisplay_TimeEditingDelay();
+		sCILogicUnit.operationCallback.increaseSelection();
+		
+		enterSequence_main_region_displayStates_MainDisplay_TimeEditingDelay_default();
+	}
+	
+	private void effect_main_region_displayStates_MainDisplay_TimeEditingDelay_tr2() {
+		exitSequence_main_region_displayStates_MainDisplay_TimeEditingDelay();
+		sCILogicUnit.operationCallback.increaseSelection();
+		
+		enterSequence_main_region_displayStates_MainDisplay_TimeEditingActive_default();
 	}
 	
 	private void effect_main_region_displayStates_Chrono_ChronoRunning_tr0() {
@@ -536,6 +623,21 @@ public class DigitalwatchStatemachine implements IDigitalwatchStatemachine {
 		enterSequence_main_region_displayStates_TimerUpdater_TimeUpdate_default();
 	}
 	
+	private void effect_main_region_displayStates_TimeSelectionAnimation_SelectionShown_tr0() {
+		exitSequence_main_region_displayStates_TimeSelectionAnimation_SelectionShown();
+		enterSequence_main_region_displayStates_TimeSelectionAnimation_SelectionHidden_default();
+	}
+	
+	private void effect_main_region_displayStates_TimeSelectionAnimation_SelectionHidden_tr0() {
+		exitSequence_main_region_displayStates_TimeSelectionAnimation_SelectionHidden();
+		enterSequence_main_region_displayStates_TimeSelectionAnimation_SelectionShown_default();
+	}
+	
+	private void effect_main_region_displayStates_TimeSelectionAnimation_Intermediate_tr0() {
+		exitSequence_main_region_displayStates_TimeSelectionAnimation_Intermediate();
+		enterSequence_main_region_displayStates_TimeSelectionAnimation_SelectionShown_default();
+	}
+	
 	/* Entry action for state 'LightOff'. */
 	private void entryAction_main_region_displayStates_IndigLo_LightOff() {
 		sCIDisplay.operationCallback.unsetIndiglo();
@@ -558,6 +660,8 @@ public class DigitalwatchStatemachine implements IDigitalwatchStatemachine {
 		sCIDisplay.operationCallback.refreshTimeDisplay();
 		
 		sCIDisplay.operationCallback.refreshDateDisplay();
+		
+		setTimeEditModeActive(false);
 	}
 	
 	/* Entry action for state 'ChronoDisplayed'. */
@@ -574,6 +678,8 @@ public class DigitalwatchStatemachine implements IDigitalwatchStatemachine {
 	
 	/* Entry action for state 'TimeEditingActive'. */
 	private void entryAction_main_region_displayStates_MainDisplay_TimeEditingActive() {
+		timer.setTimer(this, 4, 5*1000, false);
+		
 		sCILogicUnit.operationCallback.startTimeEditMode();
 		
 		setTimeEditModeActive(true);
@@ -581,22 +687,39 @@ public class DigitalwatchStatemachine implements IDigitalwatchStatemachine {
 	
 	/* Entry action for state 'AlarmInDisplayDelay'. */
 	private void entryAction_main_region_displayStates_MainDisplay_AlarmInDisplayDelay() {
-		timer.setTimer(this, 4, 1500, false);
+		timer.setTimer(this, 5, 1500, false);
+	}
+	
+	/* Entry action for state 'AlarmDisplayed'. */
+	private void entryAction_main_region_displayStates_MainDisplay_AlarmDisplayed() {
+		timer.setTimer(this, 6, 1*1000, false);
+		
+		sCIDisplay.operationCallback.refreshAlarmDisplay();
+		
+		sCILogicUnit.operationCallback.setAlarm();
+		
+		setAlarmEditModeActive(false);
 	}
 	
 	/* Entry action for state 'AlarmEdit'. */
 	private void entryAction_main_region_displayStates_MainDisplay_AlarmEdit() {
-		timer.setTimer(this, 5, 5*1000, false);
+		timer.setTimer(this, 7, 5*1000, false);
+		
+		sCILogicUnit.operationCallback.startAlarmEditMode();
+		
+		setAlarmEditModeActive(true);
+		
+		sCIDisplay.operationCallback.showSelection();
 	}
 	
-	/* Entry action for state 'AlarmOutDisplayDelay'. */
-	private void entryAction_main_region_displayStates_MainDisplay_AlarmOutDisplayDelay() {
-		timer.setTimer(this, 6, 1500, false);
+	/* Entry action for state 'TimeEditingDelay'. */
+	private void entryAction_main_region_displayStates_MainDisplay_TimeEditingDelay() {
+		timer.setTimer(this, 8, 300, false);
 	}
 	
 	/* Entry action for state 'ChronoRunning'. */
 	private void entryAction_main_region_displayStates_Chrono_ChronoRunning() {
-		timer.setTimer(this, 7, 10, false);
+		timer.setTimer(this, 9, 10, false);
 	}
 	
 	/* Entry action for state 'ChronoWaiting'. */
@@ -606,7 +729,21 @@ public class DigitalwatchStatemachine implements IDigitalwatchStatemachine {
 	
 	/* Entry action for state 'TimeUpdate'. */
 	private void entryAction_main_region_displayStates_TimerUpdater_TimeUpdate() {
-		timer.setTimer(this, 8, 1*1000, false);
+		timer.setTimer(this, 10, 1*1000, false);
+	}
+	
+	/* Entry action for state 'SelectionShown'. */
+	private void entryAction_main_region_displayStates_TimeSelectionAnimation_SelectionShown() {
+		timer.setTimer(this, 11, 300, false);
+		
+		sCIDisplay.operationCallback.showSelection();
+	}
+	
+	/* Entry action for state 'SelectionHidden'. */
+	private void entryAction_main_region_displayStates_TimeSelectionAnimation_SelectionHidden() {
+		timer.setTimer(this, 12, 300, false);
+		
+		sCIDisplay.operationCallback.hideSelection();
 	}
 	
 	/* Exit action for state 'LightDelay'. */
@@ -629,29 +766,49 @@ public class DigitalwatchStatemachine implements IDigitalwatchStatemachine {
 		timer.unsetTimer(this, 3);
 	}
 	
+	/* Exit action for state 'TimeEditingActive'. */
+	private void exitAction_main_region_displayStates_MainDisplay_TimeEditingActive() {
+		timer.unsetTimer(this, 4);
+	}
+	
 	/* Exit action for state 'AlarmInDisplayDelay'. */
 	private void exitAction_main_region_displayStates_MainDisplay_AlarmInDisplayDelay() {
-		timer.unsetTimer(this, 4);
+		timer.unsetTimer(this, 5);
+	}
+	
+	/* Exit action for state 'AlarmDisplayed'. */
+	private void exitAction_main_region_displayStates_MainDisplay_AlarmDisplayed() {
+		timer.unsetTimer(this, 6);
 	}
 	
 	/* Exit action for state 'AlarmEdit'. */
 	private void exitAction_main_region_displayStates_MainDisplay_AlarmEdit() {
-		timer.unsetTimer(this, 5);
+		timer.unsetTimer(this, 7);
 	}
 	
-	/* Exit action for state 'AlarmOutDisplayDelay'. */
-	private void exitAction_main_region_displayStates_MainDisplay_AlarmOutDisplayDelay() {
-		timer.unsetTimer(this, 6);
+	/* Exit action for state 'TimeEditingDelay'. */
+	private void exitAction_main_region_displayStates_MainDisplay_TimeEditingDelay() {
+		timer.unsetTimer(this, 8);
 	}
 	
 	/* Exit action for state 'ChronoRunning'. */
 	private void exitAction_main_region_displayStates_Chrono_ChronoRunning() {
-		timer.unsetTimer(this, 7);
+		timer.unsetTimer(this, 9);
 	}
 	
 	/* Exit action for state 'TimeUpdate'. */
 	private void exitAction_main_region_displayStates_TimerUpdater_TimeUpdate() {
-		timer.unsetTimer(this, 8);
+		timer.unsetTimer(this, 10);
+	}
+	
+	/* Exit action for state 'SelectionShown'. */
+	private void exitAction_main_region_displayStates_TimeSelectionAnimation_SelectionShown() {
+		timer.unsetTimer(this, 11);
+	}
+	
+	/* Exit action for state 'SelectionHidden'. */
+	private void exitAction_main_region_displayStates_TimeSelectionAnimation_SelectionHidden() {
+		timer.unsetTimer(this, 12);
 	}
 	
 	/* 'default' enter sequence for state displayStates */
@@ -660,6 +817,7 @@ public class DigitalwatchStatemachine implements IDigitalwatchStatemachine {
 		enterSequence_main_region_displayStates_MainDisplay_default();
 		enterSequence_main_region_displayStates_Chrono_default();
 		enterSequence_main_region_displayStates_TimerUpdater_default();
+		enterSequence_main_region_displayStates_TimeSelectionAnimation_default();
 	}
 	
 	/* 'default' enter sequence for state LightOff */
@@ -720,6 +878,7 @@ public class DigitalwatchStatemachine implements IDigitalwatchStatemachine {
 	
 	/* 'default' enter sequence for state AlarmDisplayed */
 	private void enterSequence_main_region_displayStates_MainDisplay_AlarmDisplayed_default() {
+		entryAction_main_region_displayStates_MainDisplay_AlarmDisplayed();
 		nextStateIndex = 1;
 		stateVector[1] = State.main_region_displayStates_MainDisplay_AlarmDisplayed;
 	}
@@ -731,11 +890,11 @@ public class DigitalwatchStatemachine implements IDigitalwatchStatemachine {
 		stateVector[1] = State.main_region_displayStates_MainDisplay_AlarmEdit;
 	}
 	
-	/* 'default' enter sequence for state AlarmOutDisplayDelay */
-	private void enterSequence_main_region_displayStates_MainDisplay_AlarmOutDisplayDelay_default() {
-		entryAction_main_region_displayStates_MainDisplay_AlarmOutDisplayDelay();
+	/* 'default' enter sequence for state TimeEditingDelay */
+	private void enterSequence_main_region_displayStates_MainDisplay_TimeEditingDelay_default() {
+		entryAction_main_region_displayStates_MainDisplay_TimeEditingDelay();
 		nextStateIndex = 1;
-		stateVector[1] = State.main_region_displayStates_MainDisplay_AlarmOutDisplayDelay;
+		stateVector[1] = State.main_region_displayStates_MainDisplay_TimeEditingDelay;
 	}
 	
 	/* 'default' enter sequence for state ChronoRunning */
@@ -757,6 +916,26 @@ public class DigitalwatchStatemachine implements IDigitalwatchStatemachine {
 		entryAction_main_region_displayStates_TimerUpdater_TimeUpdate();
 		nextStateIndex = 3;
 		stateVector[3] = State.main_region_displayStates_TimerUpdater_TimeUpdate;
+	}
+	
+	/* 'default' enter sequence for state SelectionShown */
+	private void enterSequence_main_region_displayStates_TimeSelectionAnimation_SelectionShown_default() {
+		entryAction_main_region_displayStates_TimeSelectionAnimation_SelectionShown();
+		nextStateIndex = 4;
+		stateVector[4] = State.main_region_displayStates_TimeSelectionAnimation_SelectionShown;
+	}
+	
+	/* 'default' enter sequence for state SelectionHidden */
+	private void enterSequence_main_region_displayStates_TimeSelectionAnimation_SelectionHidden_default() {
+		entryAction_main_region_displayStates_TimeSelectionAnimation_SelectionHidden();
+		nextStateIndex = 4;
+		stateVector[4] = State.main_region_displayStates_TimeSelectionAnimation_SelectionHidden;
+	}
+	
+	/* 'default' enter sequence for state Intermediate */
+	private void enterSequence_main_region_displayStates_TimeSelectionAnimation_Intermediate_default() {
+		nextStateIndex = 4;
+		stateVector[4] = State.main_region_displayStates_TimeSelectionAnimation_Intermediate;
 	}
 	
 	/* 'default' enter sequence for region main region */
@@ -782,6 +961,11 @@ public class DigitalwatchStatemachine implements IDigitalwatchStatemachine {
 	/* 'default' enter sequence for region TimerUpdater */
 	private void enterSequence_main_region_displayStates_TimerUpdater_default() {
 		react_main_region_displayStates_TimerUpdater__entry_Default();
+	}
+	
+	/* 'default' enter sequence for region TimeSelectionAnimation */
+	private void enterSequence_main_region_displayStates_TimeSelectionAnimation_default() {
+		react_main_region_displayStates_TimeSelectionAnimation__entry_Default();
 	}
 	
 	/* Default exit sequence for state LightOff */
@@ -832,6 +1016,8 @@ public class DigitalwatchStatemachine implements IDigitalwatchStatemachine {
 	private void exitSequence_main_region_displayStates_MainDisplay_TimeEditingActive() {
 		nextStateIndex = 1;
 		stateVector[1] = State.$NullState$;
+		
+		exitAction_main_region_displayStates_MainDisplay_TimeEditingActive();
 	}
 	
 	/* Default exit sequence for state AlarmInDisplayDelay */
@@ -846,6 +1032,8 @@ public class DigitalwatchStatemachine implements IDigitalwatchStatemachine {
 	private void exitSequence_main_region_displayStates_MainDisplay_AlarmDisplayed() {
 		nextStateIndex = 1;
 		stateVector[1] = State.$NullState$;
+		
+		exitAction_main_region_displayStates_MainDisplay_AlarmDisplayed();
 	}
 	
 	/* Default exit sequence for state AlarmEdit */
@@ -856,12 +1044,12 @@ public class DigitalwatchStatemachine implements IDigitalwatchStatemachine {
 		exitAction_main_region_displayStates_MainDisplay_AlarmEdit();
 	}
 	
-	/* Default exit sequence for state AlarmOutDisplayDelay */
-	private void exitSequence_main_region_displayStates_MainDisplay_AlarmOutDisplayDelay() {
+	/* Default exit sequence for state TimeEditingDelay */
+	private void exitSequence_main_region_displayStates_MainDisplay_TimeEditingDelay() {
 		nextStateIndex = 1;
 		stateVector[1] = State.$NullState$;
 		
-		exitAction_main_region_displayStates_MainDisplay_AlarmOutDisplayDelay();
+		exitAction_main_region_displayStates_MainDisplay_TimeEditingDelay();
 	}
 	
 	/* Default exit sequence for state ChronoRunning */
@@ -884,6 +1072,28 @@ public class DigitalwatchStatemachine implements IDigitalwatchStatemachine {
 		stateVector[3] = State.$NullState$;
 		
 		exitAction_main_region_displayStates_TimerUpdater_TimeUpdate();
+	}
+	
+	/* Default exit sequence for state SelectionShown */
+	private void exitSequence_main_region_displayStates_TimeSelectionAnimation_SelectionShown() {
+		nextStateIndex = 4;
+		stateVector[4] = State.$NullState$;
+		
+		exitAction_main_region_displayStates_TimeSelectionAnimation_SelectionShown();
+	}
+	
+	/* Default exit sequence for state SelectionHidden */
+	private void exitSequence_main_region_displayStates_TimeSelectionAnimation_SelectionHidden() {
+		nextStateIndex = 4;
+		stateVector[4] = State.$NullState$;
+		
+		exitAction_main_region_displayStates_TimeSelectionAnimation_SelectionHidden();
+	}
+	
+	/* Default exit sequence for state Intermediate */
+	private void exitSequence_main_region_displayStates_TimeSelectionAnimation_Intermediate() {
+		nextStateIndex = 4;
+		stateVector[4] = State.$NullState$;
 	}
 	
 	/* Default exit sequence for region main region */
@@ -924,8 +1134,8 @@ public class DigitalwatchStatemachine implements IDigitalwatchStatemachine {
 		case main_region_displayStates_MainDisplay_AlarmEdit:
 			exitSequence_main_region_displayStates_MainDisplay_AlarmEdit();
 			break;
-		case main_region_displayStates_MainDisplay_AlarmOutDisplayDelay:
-			exitSequence_main_region_displayStates_MainDisplay_AlarmOutDisplayDelay();
+		case main_region_displayStates_MainDisplay_TimeEditingDelay:
+			exitSequence_main_region_displayStates_MainDisplay_TimeEditingDelay();
 			break;
 		default:
 			break;
@@ -945,6 +1155,20 @@ public class DigitalwatchStatemachine implements IDigitalwatchStatemachine {
 		switch (stateVector[3]) {
 		case main_region_displayStates_TimerUpdater_TimeUpdate:
 			exitSequence_main_region_displayStates_TimerUpdater_TimeUpdate();
+			break;
+		default:
+			break;
+		}
+		
+		switch (stateVector[4]) {
+		case main_region_displayStates_TimeSelectionAnimation_SelectionShown:
+			exitSequence_main_region_displayStates_TimeSelectionAnimation_SelectionShown();
+			break;
+		case main_region_displayStates_TimeSelectionAnimation_SelectionHidden:
+			exitSequence_main_region_displayStates_TimeSelectionAnimation_SelectionHidden();
+			break;
+		case main_region_displayStates_TimeSelectionAnimation_Intermediate:
+			exitSequence_main_region_displayStates_TimeSelectionAnimation_Intermediate();
 			break;
 		default:
 			break;
@@ -992,8 +1216,8 @@ public class DigitalwatchStatemachine implements IDigitalwatchStatemachine {
 		case main_region_displayStates_MainDisplay_AlarmEdit:
 			exitSequence_main_region_displayStates_MainDisplay_AlarmEdit();
 			break;
-		case main_region_displayStates_MainDisplay_AlarmOutDisplayDelay:
-			exitSequence_main_region_displayStates_MainDisplay_AlarmOutDisplayDelay();
+		case main_region_displayStates_MainDisplay_TimeEditingDelay:
+			exitSequence_main_region_displayStates_MainDisplay_TimeEditingDelay();
 			break;
 		default:
 			break;
@@ -1019,6 +1243,23 @@ public class DigitalwatchStatemachine implements IDigitalwatchStatemachine {
 		switch (stateVector[3]) {
 		case main_region_displayStates_TimerUpdater_TimeUpdate:
 			exitSequence_main_region_displayStates_TimerUpdater_TimeUpdate();
+			break;
+		default:
+			break;
+		}
+	}
+	
+	/* Default exit sequence for region TimeSelectionAnimation */
+	private void exitSequence_main_region_displayStates_TimeSelectionAnimation() {
+		switch (stateVector[4]) {
+		case main_region_displayStates_TimeSelectionAnimation_SelectionShown:
+			exitSequence_main_region_displayStates_TimeSelectionAnimation_SelectionShown();
+			break;
+		case main_region_displayStates_TimeSelectionAnimation_SelectionHidden:
+			exitSequence_main_region_displayStates_TimeSelectionAnimation_SelectionHidden();
+			break;
+		case main_region_displayStates_TimeSelectionAnimation_Intermediate:
+			exitSequence_main_region_displayStates_TimeSelectionAnimation_Intermediate();
 			break;
 		default:
 			break;
@@ -1101,6 +1342,13 @@ public class DigitalwatchStatemachine implements IDigitalwatchStatemachine {
 	
 	/* The reactions of state TimeEditingActive. */
 	private void react_main_region_displayStates_MainDisplay_TimeEditingActive() {
+		if (check_main_region_displayStates_MainDisplay_TimeEditingActive_tr0_tr0()) {
+			effect_main_region_displayStates_MainDisplay_TimeEditingActive_tr0();
+		} else {
+			if (check_main_region_displayStates_MainDisplay_TimeEditingActive_tr1_tr1()) {
+				effect_main_region_displayStates_MainDisplay_TimeEditingActive_tr1();
+			}
+		}
 	}
 	
 	/* The reactions of state AlarmInDisplayDelay. */
@@ -1125,16 +1373,24 @@ public class DigitalwatchStatemachine implements IDigitalwatchStatemachine {
 	private void react_main_region_displayStates_MainDisplay_AlarmEdit() {
 		if (check_main_region_displayStates_MainDisplay_AlarmEdit_tr0_tr0()) {
 			effect_main_region_displayStates_MainDisplay_AlarmEdit_tr0();
+		} else {
+			if (check_main_region_displayStates_MainDisplay_AlarmEdit_tr1_tr1()) {
+				effect_main_region_displayStates_MainDisplay_AlarmEdit_tr1();
+			}
 		}
 	}
 	
-	/* The reactions of state AlarmOutDisplayDelay. */
-	private void react_main_region_displayStates_MainDisplay_AlarmOutDisplayDelay() {
-		if (check_main_region_displayStates_MainDisplay_AlarmOutDisplayDelay_tr0_tr0()) {
-			effect_main_region_displayStates_MainDisplay_AlarmOutDisplayDelay_tr0();
+	/* The reactions of state TimeEditingDelay. */
+	private void react_main_region_displayStates_MainDisplay_TimeEditingDelay() {
+		if (check_main_region_displayStates_MainDisplay_TimeEditingDelay_tr0_tr0()) {
+			effect_main_region_displayStates_MainDisplay_TimeEditingDelay_tr0();
 		} else {
-			if (check_main_region_displayStates_MainDisplay_AlarmOutDisplayDelay_tr1_tr1()) {
-				effect_main_region_displayStates_MainDisplay_AlarmOutDisplayDelay_tr1();
+			if (check_main_region_displayStates_MainDisplay_TimeEditingDelay_tr1_tr1()) {
+				effect_main_region_displayStates_MainDisplay_TimeEditingDelay_tr1();
+			} else {
+				if (check_main_region_displayStates_MainDisplay_TimeEditingDelay_tr2_tr2()) {
+					effect_main_region_displayStates_MainDisplay_TimeEditingDelay_tr2();
+				}
 			}
 		}
 	}
@@ -1164,6 +1420,27 @@ public class DigitalwatchStatemachine implements IDigitalwatchStatemachine {
 		}
 	}
 	
+	/* The reactions of state SelectionShown. */
+	private void react_main_region_displayStates_TimeSelectionAnimation_SelectionShown() {
+		if (check_main_region_displayStates_TimeSelectionAnimation_SelectionShown_tr0_tr0()) {
+			effect_main_region_displayStates_TimeSelectionAnimation_SelectionShown_tr0();
+		}
+	}
+	
+	/* The reactions of state SelectionHidden. */
+	private void react_main_region_displayStates_TimeSelectionAnimation_SelectionHidden() {
+		if (check_main_region_displayStates_TimeSelectionAnimation_SelectionHidden_tr0_tr0()) {
+			effect_main_region_displayStates_TimeSelectionAnimation_SelectionHidden_tr0();
+		}
+	}
+	
+	/* The reactions of state Intermediate. */
+	private void react_main_region_displayStates_TimeSelectionAnimation_Intermediate() {
+		if (check_main_region_displayStates_TimeSelectionAnimation_Intermediate_tr0_tr0()) {
+			effect_main_region_displayStates_TimeSelectionAnimation_Intermediate_tr0();
+		}
+	}
+	
 	/* Default react sequence for initial entry  */
 	private void react_main_region__entry_Default() {
 		enterSequence_main_region_displayStates_default();
@@ -1187,6 +1464,11 @@ public class DigitalwatchStatemachine implements IDigitalwatchStatemachine {
 	/* Default react sequence for initial entry  */
 	private void react_main_region_displayStates_TimerUpdater__entry_Default() {
 		enterSequence_main_region_displayStates_TimerUpdater_TimeUpdate_default();
+	}
+	
+	/* Default react sequence for initial entry  */
+	private void react_main_region_displayStates_TimeSelectionAnimation__entry_Default() {
+		enterSequence_main_region_displayStates_TimeSelectionAnimation_Intermediate_default();
 	}
 	
 	public void runCycle() {
@@ -1226,8 +1508,8 @@ public class DigitalwatchStatemachine implements IDigitalwatchStatemachine {
 			case main_region_displayStates_MainDisplay_AlarmEdit:
 				react_main_region_displayStates_MainDisplay_AlarmEdit();
 				break;
-			case main_region_displayStates_MainDisplay_AlarmOutDisplayDelay:
-				react_main_region_displayStates_MainDisplay_AlarmOutDisplayDelay();
+			case main_region_displayStates_MainDisplay_TimeEditingDelay:
+				react_main_region_displayStates_MainDisplay_TimeEditingDelay();
 				break;
 			case main_region_displayStates_Chrono_ChronoRunning:
 				react_main_region_displayStates_Chrono_ChronoRunning();
@@ -1237,6 +1519,15 @@ public class DigitalwatchStatemachine implements IDigitalwatchStatemachine {
 				break;
 			case main_region_displayStates_TimerUpdater_TimeUpdate:
 				react_main_region_displayStates_TimerUpdater_TimeUpdate();
+				break;
+			case main_region_displayStates_TimeSelectionAnimation_SelectionShown:
+				react_main_region_displayStates_TimeSelectionAnimation_SelectionShown();
+				break;
+			case main_region_displayStates_TimeSelectionAnimation_SelectionHidden:
+				react_main_region_displayStates_TimeSelectionAnimation_SelectionHidden();
+				break;
+			case main_region_displayStates_TimeSelectionAnimation_Intermediate:
+				react_main_region_displayStates_TimeSelectionAnimation_Intermediate();
 				break;
 			default:
 				// $NullState$
